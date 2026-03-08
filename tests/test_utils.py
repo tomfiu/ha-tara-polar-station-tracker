@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from custom_components.tara_polar_station.utils import (
+from custom_components.tara_polar_station_tracker.utils import (
     calculate_bearing,
     compass_direction,
     haversine_distance,

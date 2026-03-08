@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Final
 
-DOMAIN: Final = "tara_polar_station"
+DOMAIN: Final = "tara_polar_station_tracker"
 
 CONF_API_KEY: Final = "api_key"
 CONF_POLL_INTERVAL: Final = "poll_interval"

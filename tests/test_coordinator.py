@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.tara_polar_station.coordinator import (
+from custom_components.tara_polar_station_tracker.coordinator import (
     TaraPolarStationCoordinator,
 )
 

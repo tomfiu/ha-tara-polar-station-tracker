@@ -20,42 +20,42 @@ A Home Assistant custom integration that provides real-time tracking and polar a
 
 | Entity | Description | Unit |
 |--------|-------------|------|
-| `sensor.tara_polar_station_latitude` | Current latitude | ° |
-| `sensor.tara_polar_station_longitude` | Current longitude | ° |
-| `sensor.tara_polar_station_speed` | Vessel speed | kn |
-| `sensor.tara_polar_station_course` | Course heading | ° |
-| `sensor.tara_polar_station_last_report` | Last AIS report time | timestamp |
-| `sensor.tara_polar_station_distance_from_home` | Distance from your HA installation | km |
-| `sensor.tara_polar_station_distance_to_north_pole` | Distance to the North Pole | km |
-| `sensor.tara_polar_station_bearing_from_home` | Compass bearing from home | ° |
-| `sensor.tara_polar_station_days_since_departure` | Expedition duration | days |
-| `sensor.tara_polar_station_solar_elevation` | Sun altitude at station | ° |
-| `sensor.tara_polar_station_mission_phase` | Current expedition phase | — |
+| `sensor.tara_polar_station_tracker_latitude` | Current latitude | ° |
+| `sensor.tara_polar_station_tracker_longitude` | Current longitude | ° |
+| `sensor.tara_polar_station_tracker_speed` | Vessel speed | kn |
+| `sensor.tara_polar_station_tracker_course` | Course heading | ° |
+| `sensor.tara_polar_station_tracker_last_report` | Last AIS report time | timestamp |
+| `sensor.tara_polar_station_tracker_distance_from_home` | Distance from your HA installation | km |
+| `sensor.tara_polar_station_tracker_distance_to_north_pole` | Distance to the North Pole | km |
+| `sensor.tara_polar_station_tracker_bearing_from_home` | Compass bearing from home | ° |
+| `sensor.tara_polar_station_tracker_days_since_departure` | Expedition duration | days |
+| `sensor.tara_polar_station_tracker_solar_elevation` | Sun altitude at station | ° |
+| `sensor.tara_polar_station_tracker_mission_phase` | Current expedition phase | — |
 
 ### Binary Sensors
 
 | Entity | Description |
 |--------|-------------|
-| `binary_sensor.tara_polar_station_in_arctic_circle` | Station is above 66.5°N |
-| `binary_sensor.tara_polar_station_in_polar_day` | Sun never sets at station |
-| `binary_sensor.tara_polar_station_in_polar_night` | Sun never rises at station |
-| `binary_sensor.tara_polar_station_stationary` | Speed below 0.5 kn |
+| `binary_sensor.tara_polar_station_tracker_in_arctic_circle` | Station is above 66.5°N |
+| `binary_sensor.tara_polar_station_tracker_in_polar_day` | Sun never sets at station |
+| `binary_sensor.tara_polar_station_tracker_in_polar_night` | Sun never rises at station |
+| `binary_sensor.tara_polar_station_tracker_stationary` | Speed below 0.5 kn |
 
 ### Camera (optional)
 
 | Entity | Description |
 |--------|-------------|
-| `camera.tara_polar_station_webcam` | Panomax panoramic webcam |
+| `camera.tara_polar_station_tracker_webcam` | Panomax panoramic webcam |
 
 ## Events
 
 | Event | Trigger |
 |-------|---------|
-| `tara_polar_station_position_updated` | Every data refresh |
-| `tara_polar_station_entered_arctic_circle` | Crossed 66.5°N northbound |
-| `tara_polar_station_entered_polar_night` | Polar night begins |
-| `tara_polar_station_stationary` | Vessel stops moving |
-| `tara_polar_station_resumed_transit` | Vessel starts moving |
+| `tara_polar_station_tracker_position_updated` | Every data refresh |
+| `tara_polar_station_tracker_entered_arctic_circle` | Crossed 66.5°N northbound |
+| `tara_polar_station_tracker_entered_polar_night` | Polar night begins |
+| `tara_polar_station_tracker_stationary` | Vessel stops moving |
+| `tara_polar_station_tracker_resumed_transit` | Vessel starts moving |
 
 ## Installation
 
@@ -69,7 +69,7 @@ A Home Assistant custom integration that provides real-time tracking and polar a
 
 ### Manual
 
-1. Copy the `custom_components/tara_polar_station` folder into your Home Assistant `custom_components/` directory.
+1. Copy the `custom_components/tara_polar_station_tracker` folder into your Home Assistant `custom_components/` directory.
 2. Restart Home Assistant.
 
 ## Configuration
@@ -100,7 +100,7 @@ automation:
   - alias: "Tara enters polar night"
     trigger:
       - platform: state
-        entity_id: binary_sensor.tara_polar_station_in_polar_night
+        entity_id: binary_sensor.tara_polar_station_tracker_in_polar_night
         to: "on"
     action:
       - service: notify.mobile_app
@@ -120,8 +120,8 @@ automation:
       - service: notify.mobile_app
         data:
           message: >
-            Tara is {{ states('sensor.tara_polar_station_distance_to_north_pole') }} km
-            from the North Pole ({{ states('sensor.tara_polar_station_mission_phase') }}).
+            Tara is {{ states('sensor.tara_polar_station_tracker_distance_to_north_pole') }} km
+            from the North Pole ({{ states('sensor.tara_polar_station_tracker_mission_phase') }}).
 ```
 
 ## Dashboard Examples
@@ -131,14 +131,14 @@ automation:
 ```yaml
 type: map
 entities:
-  - entity: sensor.tara_polar_station_latitude
+  - entity: sensor.tara_polar_station_tracker_latitude
 ```
 
 ### Gauge card
 
 ```yaml
 type: gauge
-entity: sensor.tara_polar_station_distance_to_north_pole
+entity: sensor.tara_polar_station_tracker_distance_to_north_pole
 name: Distance to North Pole
 unit: km
 min: 0

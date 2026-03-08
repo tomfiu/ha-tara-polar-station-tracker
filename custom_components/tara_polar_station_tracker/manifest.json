@@ -1,5 +1,5 @@
 {
-  "domain": "tara_polar_station",
+  "domain": "tara_polar_station_tracker",
   "name": "Tara Polar Station Tracker",
   "codeowners": [],
   "config_flow": true,
