@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tara Polar Station Tracker",
+        "description": "Set up the Tara Polar Station Tracker.\n\nYou need a free API key from [AISStream.io](https://aisstream.io/) (sign in with GitHub).",
+        "data": {
+          "api_key": "AISStream API Key"
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Invalid API key. Please verify your AISStream API key."
+    },
+    "abort": {
+      "already_configured": "Tara Polar Station is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tara Polar Station Options",
+        "data": {
+          "poll_interval": "Update interval (minutes)",
+          "home_latitude": "Home latitude override",
+          "home_longitude": "Home longitude override",
+          "departure_date": "Expedition departure date (YYYY-MM-DD)",
+          "enable_webcam": "Enable Panomax webcam"
+        }
+      }
+    }
+  }
+}

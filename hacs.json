@@ -1,0 +1,8 @@
+{
+  "name": "Tara Polar Station Tracker",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["tara_polar_station"],
+  "iot_class": "cloud_polling",
+  "homeassistant": "2024.1.0"
+}
