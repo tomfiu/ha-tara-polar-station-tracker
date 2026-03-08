@@ -42,8 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, api_key, poll_interval, home_lat, home_lon, departure_date
     )
 
-    await coordinator.async_config_entry_first_refresh()
-
+    # Store coordinator so platforms can access it during setup
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
@@ -51,8 +50,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if enable_webcam:
         platforms.append(Platform.CAMERA)
 
+    # Set up platforms immediately — entities will show "Unknown" until
+    # the first AIS report arrives.  We intentionally skip
+    # async_config_entry_first_refresh() because the AIS WebSocket
+    # fetch can take up to 90 s, which exceeds HA's 60 s setup timeout.
     await hass.config_entries.async_forward_entry_setups(entry, platforms)
     entry.async_on_unload(entry.add_update_listener(_async_update_options))
+
+    # Kick off first data fetch in the background
+    hass.async_create_task(coordinator.async_refresh())
 
     return True
 
