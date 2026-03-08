@@ -10,10 +10,7 @@ from typing import Any
 import aiohttp
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     AISSTREAM_WS_URL,
@@ -42,7 +39,7 @@ from .utils import (
 
 _LOGGER = logging.getLogger(__name__)
 
-WS_TIMEOUT = 60  # seconds to wait for a position report
+WS_TIMEOUT = 90  # seconds to wait for a position report
 
 
 class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -85,7 +82,39 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("No new AIS data, using last known position")
             return self._previous_data
 
-        raise UpdateFailed("No AIS data available")
+        # No data yet — return empty defaults so setup succeeds.
+        # Entities will show as "unknown" until the first report arrives.
+        _LOGGER.warning(
+            "No AIS data received yet for Tara Polar Station; "
+            "sensors will update once a position report is available"
+        )
+        return self._empty_data()
+
+    @staticmethod
+    def _empty_data() -> dict[str, Any]:
+        """Return a default data dict with all keys set to None/False."""
+        return {
+            "latitude": None,
+            "longitude": None,
+            "speed": None,
+            "course": None,
+            "heading": None,
+            "nav_status": None,
+            "timestamp": None,
+            "distance_from_home": None,
+            "distance_to_north_pole": None,
+            "bearing_from_home": None,
+            "bearing_compass": None,
+            "in_arctic_circle": False,
+            "in_polar_day": False,
+            "in_polar_night": False,
+            "solar_elevation": None,
+            "local_sunrise": None,
+            "local_sunset": None,
+            "stationary": False,
+            "days_since_departure": None,
+            "mission_phase": "Pre-departure",
+        }
 
     async def _fetch_ais_data(self) -> dict[str, Any] | None:
         """Connect to AISStream WebSocket and fetch latest position report."""
