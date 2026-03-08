@@ -151,6 +151,11 @@ Position data is sourced from [AISStream.io](https://aisstream.io/), a free real
 
 Webcam imagery is sourced from [Panomax](https://tara-polar-station.panomax.com/).
 
+## Links
+
+- [GitHub Repository](https://github.com/tomfiu/ha-tara-polar-station-tracker)
+- [Issue Tracker](https://github.com/tomfiu/ha-tara-polar-station-tracker/issues)
+
 ## License
 
 [MIT](LICENSE)

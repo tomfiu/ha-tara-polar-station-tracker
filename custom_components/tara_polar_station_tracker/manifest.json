@@ -3,9 +3,9 @@
   "name": "Tara Polar Station Tracker",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/tomasfiurasek/ha-tara-polar-station",
+  "documentation": "https://github.com/tomfiu/ha-tara-polar-station-tracker",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/tomasfiurasek/ha-tara-polar-station/issues",
+  "issue_tracker": "https://github.com/tomfiu/ha-tara-polar-station-tracker/issues",
   "requirements": [],
   "version": "0.1.0"
 }
