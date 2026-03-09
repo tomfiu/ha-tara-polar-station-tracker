@@ -88,10 +88,10 @@ class TaraPolarStationConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             api_key = user_input[CONF_API_KEY]
             if await self._test_aisstream_key(api_key):
-                await self.async_set_unique_id(DOMAIN)
+                await self.async_set_unique_id(f"{DOMAIN}_{SOURCE_AISSTREAM}")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title="Tara Polar Station",
+                    title="Tara Polar Station (AISStream)",
                     data={
                         CONF_DATA_SOURCE: SOURCE_AISSTREAM,
                         CONF_API_KEY: api_key,
@@ -154,10 +154,10 @@ class TaraPolarStationConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             api_key = user_input[CONF_API_KEY]
             if await self._test_datalastic_key(api_key):
-                await self.async_set_unique_id(DOMAIN)
+                await self.async_set_unique_id(f"{DOMAIN}_{SOURCE_DATALASTIC}")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title="Tara Polar Station",
+                    title="Tara Polar Station (Datalastic)",
                     data={
                         CONF_DATA_SOURCE: SOURCE_DATALASTIC,
                         CONF_API_KEY: api_key,
@@ -201,10 +201,10 @@ class TaraPolarStationConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Step 2c — confirm Nullschool/Tara source (no API key required)."""
         if user_input is not None:
-            await self.async_set_unique_id(DOMAIN)
+            await self.async_set_unique_id(f"{DOMAIN}_{SOURCE_NULLSCHOOL}")
             self._abort_if_unique_id_configured()
             return self.async_create_entry(
-                title="Tara Polar Station",
+                title="Tara Polar Station (Nullschool)",
                 data={
                     CONF_DATA_SOURCE: SOURCE_NULLSCHOOL,
                     CONF_API_KEY: "",
