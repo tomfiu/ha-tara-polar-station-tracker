@@ -3,14 +3,35 @@
     "step": {
       "user": {
         "title": "Tara Polar Station Tracker",
-        "description": "Set up the Tara Polar Station Tracker.\n\nYou need a free API key from [AISStream.io](https://aisstream.io/) (sign in with GitHub).",
+        "description": "Choose how to track the Tara Polar Station. **Nullschool/Tara** requires no API key and uses the official Tara expedition tracking feed. The AIS options require a free or paid API key from the respective provider.",
+        "data": {
+          "data_source": "Tracking data source"
+        },
+        "data_description": {
+          "data_source": "Select the service that will provide position data for the Tara Polar Station."
+        }
+      },
+      "aisstream": {
+        "title": "AISStream — API Key",
+        "description": "Enter your free API key from [AISStream.io](https://aisstream.io/) (sign in with GitHub). Position updates arrive via a real-time WebSocket stream.",
         "data": {
           "api_key": "AISStream API Key"
         }
+      },
+      "datalastic": {
+        "title": "Datalastic — API Key",
+        "description": "Enter your API key from [Datalastic.com](https://datalastic.com/). Position data is fetched via a REST API on each update cycle.",
+        "data": {
+          "api_key": "Datalastic API Key"
+        }
+      },
+      "nullschool": {
+        "title": "Nullschool/Tara — Official Expedition Feed",
+        "description": "Uses the official Tara expedition tracking feed at [tara.nullschool.net](https://tara.nullschool.net/). **No API key required.** Position data is updated every ~hour from the vessel's satellite tracker."
       }
     },
     "error": {
-      "invalid_api_key": "Invalid API key. Please verify your AISStream API key."
+      "invalid_api_key": "Invalid API key. Please double-check the key for the selected source."
     },
     "abort": {
       "already_configured": "Tara Polar Station is already configured."
