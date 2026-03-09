@@ -173,6 +173,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "stationary": False,
             "days_since_departure": days,
             "mission_phase": phase,
+            "track_history": [],
         }
 
     async def _load_cache(self) -> None:
@@ -303,7 +304,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @staticmethod
     def _parse_nullschool_track(payload: Any) -> dict[str, Any] | None:
-        """Extract the most recent position from the Tara/Nullschool track JSON.
+        """Extract position and full track history from Tara/Nullschool JSON.
 
         The endpoint returns a columnar array:
             [
@@ -313,6 +314,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         The last row in the data array is the most recent position.
         Timestamps are Unix epoch seconds (UTC).
+        All rows are preserved as ``track_history`` for map display.
         """
         try:
             if (
@@ -342,6 +344,19 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             track_idx = col.get("track", 3)
             speed_idx = col.get("speed", 4)
 
+            # Build full track history from all rows.
+            track_history: list[dict[str, Any]] = []
+            for r in rows:
+                track_history.append(
+                    {
+                        "latitude": float(r[lat_idx]),
+                        "longitude": float(r[lon_idx]),
+                        "timestamp": datetime.fromtimestamp(
+                            r[ts_idx], tz=timezone.utc
+                        ).isoformat(),
+                    }
+                )
+
             row = rows[-1]  # most recent entry
 
             ts_unix = row[ts_idx]
@@ -355,6 +370,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "heading": None,
                 "nav_status": None,
                 "timestamp": timestamp,
+                "track_history": track_history,
             }
         except Exception:
             _LOGGER.exception("Failed to parse Nullschool track JSON")
