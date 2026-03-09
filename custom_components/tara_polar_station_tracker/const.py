@@ -11,14 +11,24 @@ CONF_HOME_LAT: Final = "home_latitude"
 CONF_HOME_LON: Final = "home_longitude"
 CONF_ENABLE_WEBCAM: Final = "enable_webcam"
 CONF_DEPARTURE_DATE: Final = "departure_date"
+CONF_DATA_SOURCE: Final = "data_source"
 
 DEFAULT_POLL_INTERVAL: Final = 15  # minutes
 DEFAULT_ENABLE_WEBCAM: Final = True
 DEFAULT_DEPARTURE_DATE: Final = "2026-07-01"  # Planned first Arctic drift
 
+# --- Data source identifiers ---
+SOURCE_AISSTREAM: Final = "aisstream"
+SOURCE_DATALASTIC: Final = "datalastic"
+DATA_SOURCES: Final = [SOURCE_AISSTREAM, SOURCE_DATALASTIC]
+DEFAULT_DATA_SOURCE: Final = SOURCE_AISSTREAM
+
 TARA_MMSI: Final = "228471700"
 
 AISSTREAM_WS_URL: Final = "wss://stream.aisstream.io/v0/stream"
+
+# Datalastic REST API (https://datalastic.com)
+DATALASTIC_API_URL: Final = "https://api.datalastic.com/api/v0/vessel"
 
 PANOMAX_CAM_ID: Final = "10693"
 PANOMAX_IMAGE_URL: Final = (

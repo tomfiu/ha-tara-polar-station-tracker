@@ -16,6 +16,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .const import (
     AISSTREAM_WS_URL,
     ARCTIC_CIRCLE_LATITUDE,
+    DATALASTIC_API_URL,
+    DEFAULT_DATA_SOURCE,
     DOMAIN,
     EVENT_ENTERED_ARCTIC,
     EVENT_ENTERED_POLAR_NIGHT,
@@ -25,6 +27,8 @@ from .const import (
     FAST_POLL_INTERVAL,
     NORTH_POLE_LATITUDE,
     NORTH_POLE_LONGITUDE,
+    SOURCE_AISSTREAM,
+    SOURCE_DATALASTIC,
     STATIONARY_SPEED_THRESHOLD,
     TARA_MMSI,
 )
@@ -56,6 +60,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         home_lon: float,
         departure_date: str,
         store: Store,
+        data_source: str = DEFAULT_DATA_SOURCE,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -65,6 +70,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(minutes=FAST_POLL_INTERVAL),
         )
         self._api_key = api_key
+        self._data_source = data_source
         self._normal_interval = timedelta(minutes=poll_interval)
         self._fast_interval = timedelta(minutes=FAST_POLL_INTERVAL)
         self._home_lat = home_lat
@@ -81,7 +87,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._cache_loaded = True
             await self._load_cache()
 
-        raw = await self._fetch_ais_data()
+        raw = await self._fetch_position_data()
 
         if raw is not None:
             data = self._compute_derived(raw)
@@ -118,8 +124,9 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # No data yet — return empty defaults so setup succeeds.
         # Keep the fast poll interval to retry sooner.
         _LOGGER.warning(
-            "No AIS data received yet for Tara Polar Station; "
-            "sensors will update once a position report is available"
+            "No position data received yet for Tara Polar Station (source: %s); "
+            "sensors will update once a position report is available",
+            self._data_source,
         )
         return self._empty_data()
 
@@ -204,6 +211,59 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._store.async_save(cache)
         except Exception:
             _LOGGER.warning("Failed to save position cache", exc_info=True)
+
+    async def _fetch_position_data(self) -> dict[str, Any] | None:
+        """Dispatch to the configured data-source fetcher."""
+        if self._data_source == SOURCE_DATALASTIC:
+            return await self._fetch_datalastic_data()
+        # Default / SOURCE_AISSTREAM
+        return await self._fetch_ais_data()
+
+    async def _fetch_datalastic_data(self) -> dict[str, Any] | None:
+        """Fetch latest vessel position from the Datalastic REST API."""
+        url = f"{DATALASTIC_API_URL}?api-key={self._api_key}&mmsi={TARA_MMSI}"
+        session = aiohttp.ClientSession()
+        try:
+            async with asyncio.timeout(30):
+                async with session.get(url) as resp:
+                    if resp.status != 200:
+                        _LOGGER.warning(
+                            "Datalastic API returned HTTP %s", resp.status
+                        )
+                        return None
+                    payload = await resp.json(content_type=None)
+                    return self._parse_datalastic(payload)
+        except TimeoutError:
+            _LOGGER.debug("Datalastic API request timed out")
+            return None
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("Datalastic API connection error: %s", err)
+            return None
+        except Exception:
+            _LOGGER.exception("Unexpected error fetching Datalastic data")
+            return None
+        finally:
+            await session.close()
+
+    @staticmethod
+    def _parse_datalastic(payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Extract position fields from a Datalastic API response."""
+        vessel = payload.get("data")
+        if not vessel:
+            return None
+        lat = vessel.get("latitude")
+        lon = vessel.get("longitude")
+        if lat is None or lon is None:
+            return None
+        return {
+            "latitude": lat,
+            "longitude": lon,
+            "speed": vessel.get("speed", 0.0),
+            "course": vessel.get("course", 0.0),
+            "heading": vessel.get("heading"),
+            "nav_status": vessel.get("navigational_status"),
+            "timestamp": vessel.get("timestamp"),
+        }
 
     async def _fetch_ais_data(self) -> dict[str, Any] | None:
         """Connect to AISStream WebSocket and fetch latest position report."""
