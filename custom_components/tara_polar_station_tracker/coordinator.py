@@ -79,8 +79,12 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return data
 
         if self._previous_data is not None:
-            _LOGGER.debug("No new AIS data, using last known position")
-            return self._previous_data
+            # Re-derive time-dependent values (solar, polar day/night, days)
+            # using the last known position.
+            _LOGGER.debug("No new AIS data, recomputing from last known position")
+            data = self._compute_derived(self._previous_data)
+            self._previous_data = data
+            return data
 
         # No data yet — return empty defaults so setup succeeds.
         # Entities will show as "unknown" until the first report arrives.
@@ -90,9 +94,25 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         return self._empty_data()
 
-    @staticmethod
-    def _empty_data() -> dict[str, Any]:
-        """Return a default data dict with all keys set to None/False."""
+    def _empty_data(self) -> dict[str, Any]:
+        """Return a default data dict — computes what it can without AIS position."""
+        now = datetime.now(timezone.utc)
+
+        # Days since departure is independent of AIS data
+        try:
+            departure = datetime.strptime(
+                self._departure_date, "%Y-%m-%d"
+            ).replace(tzinfo=timezone.utc)
+            delta = now - departure
+            days = max(0, delta.days)
+        except (ValueError, TypeError):
+            days = None
+
+        if days is None or days == 0:
+            phase = "Pre-departure"
+        else:
+            phase = "Drifting"  # assume drifting when no position data
+
         return {
             "latitude": None,
             "longitude": None,
@@ -112,8 +132,8 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "local_sunrise": None,
             "local_sunset": None,
             "stationary": False,
-            "days_since_departure": None,
-            "mission_phase": "Pre-departure",
+            "days_since_departure": days,
+            "mission_phase": phase,
         }
 
     async def _fetch_ais_data(self) -> dict[str, Any] | None:
