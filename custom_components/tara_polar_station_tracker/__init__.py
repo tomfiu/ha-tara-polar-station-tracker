@@ -10,11 +10,13 @@ from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_API_KEY,
+    CONF_DATA_SOURCE,
     CONF_DEPARTURE_DATE,
     CONF_ENABLE_WEBCAM,
     CONF_HOME_LAT,
     CONF_HOME_LON,
     CONF_POLL_INTERVAL,
+    DEFAULT_DATA_SOURCE,
     DEFAULT_DEPARTURE_DATE,
     DEFAULT_ENABLE_WEBCAM,
     DEFAULT_POLL_INTERVAL,
@@ -32,6 +34,9 @@ PLATFORMS_BASE: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tara Polar Station from a config entry."""
     api_key = entry.data[CONF_API_KEY]
+    # Backward-compatible: entries created before multi-source support default
+    # to AISStream so existing configurations continue to work unchanged.
+    data_source = entry.data.get(CONF_DATA_SOURCE, DEFAULT_DATA_SOURCE)
 
     poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
     home_lat = entry.options.get(CONF_HOME_LAT) or hass.config.latitude
@@ -41,9 +46,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     enable_webcam = entry.options.get(CONF_ENABLE_WEBCAM, DEFAULT_ENABLE_WEBCAM)
 
-    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}_{entry.entry_id}")
     coordinator = TaraPolarStationCoordinator(
-        hass, api_key, poll_interval, home_lat, home_lon, departure_date, store
+        hass,
+        api_key,
+        poll_interval,
+        home_lat,
+        home_lon,
+        departure_date,
+        store,
+        data_source=data_source,
     )
 
     # Store coordinator so platforms can access it during setup

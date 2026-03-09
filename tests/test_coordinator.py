@@ -11,6 +11,82 @@ from custom_components.tara_polar_station_tracker.coordinator import (
 )
 
 
+class TestParseNullschoolTrack:
+    """Test the _parse_nullschool_track static method."""
+
+    # Columnar payload format: [headers, rows]
+    _HEADERS = ["timestamp", "lon", "lat", "track", "speed"]
+    _TS = 1773042605  # 2026-03-09 UTC
+
+    def _payload(self, rows):
+        return [self._HEADERS, rows]
+
+    def test_parse_valid_payload(self):
+        """Parse a well-formed columnar payload and return the last row."""
+        payload = self._payload([
+            [self._TS - 3600, 15.0, 78.0, 90, 0],
+            [self._TS, -1.608, 49.647, 0, 0],
+        ])
+        result = TaraPolarStationCoordinator._parse_nullschool_track(payload)
+        assert result is not None
+        assert result["latitude"] == pytest.approx(49.647)
+        assert result["longitude"] == pytest.approx(-1.608)
+        assert result["speed"] == pytest.approx(0.0)
+        assert result["course"] == pytest.approx(0.0)
+        assert result["heading"] is None
+        assert result["nav_status"] is None
+
+    def test_timestamp_converted_to_datetime(self):
+        """Timestamp field should be a timezone-aware UTC datetime."""
+        payload = self._payload([[self._TS, 0.0, 80.0, 45, 5]])
+        result = TaraPolarStationCoordinator._parse_nullschool_track(payload)
+        assert isinstance(result["timestamp"], datetime)
+        assert result["timestamp"].tzinfo is not None
+        assert result["timestamp"] == datetime.fromtimestamp(
+            self._TS, tz=timezone.utc
+        )
+
+    def test_most_recent_row_used(self):
+        """The last row in the data array should be used."""
+        payload = self._payload([
+            [self._TS - 7200, 10.0, 70.0, 0, 3],
+            [self._TS - 3600, 11.0, 71.0, 0, 2],
+            [self._TS, 12.0, 72.0, 0, 1],
+        ])
+        result = TaraPolarStationCoordinator._parse_nullschool_track(payload)
+        assert result["latitude"] == pytest.approx(72.0)
+        assert result["longitude"] == pytest.approx(12.0)
+
+    def test_column_order_independent(self):
+        """Parser should use header names, not fixed positions."""
+        # Swap lat and lon vs usual order
+        payload = [
+            ["timestamp", "lat", "lon", "track", "speed"],
+            [[self._TS, 75.0, 20.0, 90, 4]],
+        ]
+        result = TaraPolarStationCoordinator._parse_nullschool_track(payload)
+        assert result["latitude"] == pytest.approx(75.0)
+        assert result["longitude"] == pytest.approx(20.0)
+
+    def test_returns_none_for_empty_rows(self):
+        """Empty data array should return None."""
+        payload = self._payload([])
+        result = TaraPolarStationCoordinator._parse_nullschool_track(payload)
+        assert result is None
+
+    def test_returns_none_for_wrong_format(self):
+        """A plain dict payload should return None."""
+        result = TaraPolarStationCoordinator._parse_nullschool_track(
+            {"positions": []}
+        )
+        assert result is None
+
+    def test_returns_none_for_non_list(self):
+        """A string payload should return None."""
+        result = TaraPolarStationCoordinator._parse_nullschool_track("bad")
+        assert result is None
+
+
 class TestParsePosition:
     """Test the _parse_position static method."""
 
