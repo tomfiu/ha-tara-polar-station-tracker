@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -59,6 +59,9 @@ class TestComputeDerived:
         """Create a coordinator instance with a mock hass."""
         hass = MagicMock()
         hass.bus = MagicMock()
+        store = MagicMock()
+        store.async_load = AsyncMock(return_value=None)
+        store.async_save = AsyncMock()
         coord = TaraPolarStationCoordinator(
             hass=hass,
             api_key="test",
@@ -66,6 +69,7 @@ class TestComputeDerived:
             home_lat=home_lat,
             home_lon=home_lon,
             departure_date=departure_date,
+            store=store,
         )
         return coord
 
@@ -192,3 +196,119 @@ class TestComputeDerived:
         assert result["distance_from_home"] is None
         assert result["distance_to_north_pole"] is None
         assert result["in_arctic_circle"] is False
+
+
+class TestCaching:
+    """Test persistent position caching."""
+
+    def _make_coordinator(self, store=None):
+        """Create a coordinator with an optional custom store mock."""
+        hass = MagicMock()
+        hass.bus = MagicMock()
+        if store is None:
+            store = MagicMock()
+            store.async_load = AsyncMock(return_value=None)
+            store.async_save = AsyncMock()
+        return TaraPolarStationCoordinator(
+            hass=hass,
+            api_key="test",
+            poll_interval=15,
+            home_lat=50.0,
+            home_lon=14.0,
+            departure_date="2026-07-01",
+            store=store,
+        )
+
+    @pytest.mark.asyncio
+    async def test_load_cache_populates_previous_data(self):
+        """Loading a valid cache should set _previous_data."""
+        cached = {
+            "latitude": 79.332,
+            "longitude": -23.992,
+            "speed": 0.3,
+            "course": 45.0,
+            "heading": 511,
+            "nav_status": 0,
+            "timestamp": "2026-08-15 12:30:00.000000 +0000 UTC",
+        }
+        store = MagicMock()
+        store.async_load = AsyncMock(return_value=cached)
+        store.async_save = AsyncMock()
+
+        coord = self._make_coordinator(store=store)
+        await coord._load_cache()
+
+        assert coord._previous_data is not None
+        assert coord._previous_data["latitude"] == pytest.approx(79.332)
+        assert coord._previous_data["in_arctic_circle"] is True
+        store.async_load.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_load_cache_none_leaves_previous_data_empty(self):
+        """When no cache exists, _previous_data should remain None."""
+        store = MagicMock()
+        store.async_load = AsyncMock(return_value=None)
+        store.async_save = AsyncMock()
+
+        coord = self._make_coordinator(store=store)
+        await coord._load_cache()
+
+        assert coord._previous_data is None
+
+    @pytest.mark.asyncio
+    async def test_save_cache_stores_raw_data(self):
+        """_save_cache should persist raw telemetry."""
+        store = MagicMock()
+        store.async_load = AsyncMock(return_value=None)
+        store.async_save = AsyncMock()
+
+        coord = self._make_coordinator(store=store)
+        raw = {
+            "latitude": 79.332,
+            "longitude": -23.992,
+            "speed": 0.3,
+            "course": 45.0,
+            "heading": 511,
+            "nav_status": 0,
+            "timestamp": "2026-08-15T12:30:00+00:00",
+        }
+        await coord._save_cache(raw)
+
+        store.async_save.assert_awaited_once()
+        saved = store.async_save.call_args[0][0]
+        assert saved["latitude"] == pytest.approx(79.332)
+        assert saved["longitude"] == pytest.approx(-23.992)
+
+    @pytest.mark.asyncio
+    async def test_save_cache_converts_datetime_timestamp(self):
+        """When timestamp is a datetime, it should be serialised as ISO string."""
+        store = MagicMock()
+        store.async_load = AsyncMock(return_value=None)
+        store.async_save = AsyncMock()
+
+        coord = self._make_coordinator(store=store)
+        ts = datetime(2026, 8, 15, 12, 30, tzinfo=timezone.utc)
+        raw = {
+            "latitude": 70.0,
+            "longitude": 0.0,
+            "speed": 0.0,
+            "course": 0.0,
+            "heading": None,
+            "nav_status": None,
+            "timestamp": ts,
+        }
+        await coord._save_cache(raw)
+
+        saved = store.async_save.call_args[0][0]
+        assert saved["timestamp"] == ts.isoformat()
+
+    def test_initial_interval_is_fast(self):
+        """Coordinator should start with the fast poll interval."""
+        coord = self._make_coordinator()
+        from datetime import timedelta
+
+        from custom_components.tara_polar_station_tracker.const import (
+            FAST_POLL_INTERVAL,
+        )
+
+        assert coord.update_interval == timedelta(minutes=FAST_POLL_INTERVAL)

@@ -10,6 +10,7 @@ from typing import Any
 import aiohttp
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
@@ -21,6 +22,7 @@ from .const import (
     EVENT_POSITION_UPDATED,
     EVENT_RESUMED_TRANSIT,
     EVENT_STATIONARY,
+    FAST_POLL_INTERVAL,
     NORTH_POLE_LATITUDE,
     NORTH_POLE_LONGITUDE,
     STATIONARY_SPEED_THRESHOLD,
@@ -53,22 +55,32 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         home_lat: float,
         home_lon: float,
         departure_date: str,
+        store: Store,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=poll_interval),
+            update_interval=timedelta(minutes=FAST_POLL_INTERVAL),
         )
         self._api_key = api_key
+        self._normal_interval = timedelta(minutes=poll_interval)
+        self._fast_interval = timedelta(minutes=FAST_POLL_INTERVAL)
         self._home_lat = home_lat
         self._home_lon = home_lon
         self._departure_date = departure_date
+        self._store = store
         self._previous_data: dict[str, Any] | None = None
+        self._cache_loaded = False
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from AISStream and compute derived values."""
+        # On first run, load any cached position from disk.
+        if not self._cache_loaded:
+            self._cache_loaded = True
+            await self._load_cache()
+
         raw = await self._fetch_ais_data()
 
         if raw is not None:
@@ -76,6 +88,18 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._fire_events(data)
             self._previous_data = data
             _LOGGER.debug("Updated telemetry: %s", data)
+
+            # Persist raw position data so it survives restarts.
+            await self._save_cache(raw)
+
+            # Switch to normal polling now that we have data.
+            if self.update_interval != self._normal_interval:
+                _LOGGER.debug(
+                    "Switching to normal poll interval (%s)",
+                    self._normal_interval,
+                )
+                self.update_interval = self._normal_interval
+
             return data
 
         if self._previous_data is not None:
@@ -84,10 +108,15 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.debug("No new AIS data, recomputing from last known position")
             data = self._compute_derived(self._previous_data)
             self._previous_data = data
+
+            # If we have cached data, use the normal interval.
+            if self.update_interval != self._normal_interval:
+                self.update_interval = self._normal_interval
+
             return data
 
         # No data yet — return empty defaults so setup succeeds.
-        # Entities will show as "unknown" until the first report arrives.
+        # Keep the fast poll interval to retry sooner.
         _LOGGER.warning(
             "No AIS data received yet for Tara Polar Station; "
             "sensors will update once a position report is available"
@@ -135,6 +164,46 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "days_since_departure": days,
             "mission_phase": phase,
         }
+
+    async def _load_cache(self) -> None:
+        """Load the last known position from persistent storage."""
+        try:
+            cached: dict[str, Any] | None = await self._store.async_load()
+        except Exception:
+            _LOGGER.warning("Failed to load cached position data", exc_info=True)
+            return
+
+        if cached and cached.get("latitude") is not None:
+            _LOGGER.info(
+                "Loaded cached position: %.4f, %.4f (from %s)",
+                cached["latitude"],
+                cached["longitude"],
+                cached.get("timestamp", "unknown"),
+            )
+            # Recompute time-dependent derived values from the cached raw data.
+            data = self._compute_derived(cached)
+            self._previous_data = data
+
+    async def _save_cache(self, raw: dict[str, Any]) -> None:
+        """Persist raw position data to disk for restart resilience."""
+        # Store only the serialisable raw fields (no datetime objects).
+        cache = {
+            "latitude": raw.get("latitude"),
+            "longitude": raw.get("longitude"),
+            "speed": raw.get("speed"),
+            "course": raw.get("course"),
+            "heading": raw.get("heading"),
+            "nav_status": raw.get("nav_status"),
+            "timestamp": (
+                raw["timestamp"].isoformat()
+                if isinstance(raw.get("timestamp"), datetime)
+                else raw.get("timestamp")
+            ),
+        }
+        try:
+            await self._store.async_save(cache)
+        except Exception:
+            _LOGGER.warning("Failed to save position cache", exc_info=True)
 
     async def _fetch_ais_data(self) -> dict[str, Any] | None:
         """Connect to AISStream WebSocket and fetch latest position report."""

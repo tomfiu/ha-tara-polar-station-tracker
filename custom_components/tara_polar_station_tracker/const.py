@@ -30,6 +30,11 @@ NORTH_POLE_LATITUDE: Final = 90.0
 NORTH_POLE_LONGITUDE: Final = 0.0
 STATIONARY_SPEED_THRESHOLD: Final = 0.5  # knots
 
+STORAGE_KEY: Final = DOMAIN
+STORAGE_VERSION: Final = 1
+
+FAST_POLL_INTERVAL: Final = 2  # minutes — used until first AIS data arrives
+
 EVENT_POSITION_UPDATED: Final = f"{DOMAIN}_position_updated"
 EVENT_ENTERED_ARCTIC: Final = f"{DOMAIN}_entered_arctic_circle"
 EVENT_ENTERED_POLAR_NIGHT: Final = f"{DOMAIN}_entered_polar_night"

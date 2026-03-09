@@ -6,6 +6,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_API_KEY,
@@ -18,6 +19,8 @@ from .const import (
     DEFAULT_ENABLE_WEBCAM,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
 )
 from .coordinator import TaraPolarStationCoordinator
 
@@ -38,8 +41,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     enable_webcam = entry.options.get(CONF_ENABLE_WEBCAM, DEFAULT_ENABLE_WEBCAM)
 
+    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     coordinator = TaraPolarStationCoordinator(
-        hass, api_key, poll_interval, home_lat, home_lon, departure_date
+        hass, api_key, poll_interval, home_lat, home_lon, departure_date, store
     )
 
     # Store coordinator so platforms can access it during setup
