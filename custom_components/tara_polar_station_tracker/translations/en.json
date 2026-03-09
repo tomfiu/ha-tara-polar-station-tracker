@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Tara Polar Station Tracker",
-        "description": "Choose how to track the Tara Polar Station. Each source requires its own API key obtained from the respective provider.",
+        "description": "Choose how to track the Tara Polar Station. **Nullschool/Tara** requires no API key and uses the official Tara expedition tracking feed. The AIS options require a free or paid API key from the respective provider.",
         "data": {
           "data_source": "Tracking data source"
         },
@@ -24,6 +24,10 @@
         "data": {
           "api_key": "Datalastic API Key"
         }
+      },
+      "nullschool": {
+        "title": "Nullschool/Tara — Official Expedition Feed",
+        "description": "Uses the official Tara expedition tracking feed at [tara.nullschool.net](https://tara.nullschool.net/). **No API key required.** Position data is updated every ~hour from the vessel's satellite tracker."
       }
     },
     "error": {

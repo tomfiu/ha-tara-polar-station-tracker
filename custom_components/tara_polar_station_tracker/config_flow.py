@@ -35,6 +35,7 @@ from .const import (
     DOMAIN,
     SOURCE_AISSTREAM,
     SOURCE_DATALASTIC,
+    SOURCE_NULLSCHOOL,
     TARA_MMSI,
 )
 
@@ -60,6 +61,8 @@ class TaraPolarStationConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_aisstream()
             if self._selected_source == SOURCE_DATALASTIC:
                 return await self.async_step_datalastic()
+            if self._selected_source == SOURCE_NULLSCHOOL:
+                return await self.async_step_nullschool()
 
         return self.async_show_form(
             step_id="user",
@@ -188,6 +191,30 @@ class TaraPolarStationConfigFlow(ConfigFlow, domain=DOMAIN):
             return False
         finally:
             await session.close()
+
+    # ------------------------------------------------------------------
+    # Nullschool/Tara source (no API key required)
+    # ------------------------------------------------------------------
+
+    async def async_step_nullschool(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 2c — confirm Nullschool/Tara source (no API key required)."""
+        if user_input is not None:
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title="Tara Polar Station",
+                data={
+                    CONF_DATA_SOURCE: SOURCE_NULLSCHOOL,
+                    CONF_API_KEY: "",
+                },
+            )
+
+        return self.async_show_form(
+            step_id="nullschool",
+            data_schema=vol.Schema({}),
+        )
 
     # ------------------------------------------------------------------
     # Options flow

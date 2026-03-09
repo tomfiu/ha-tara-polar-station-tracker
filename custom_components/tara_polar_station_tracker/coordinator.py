@@ -27,8 +27,11 @@ from .const import (
     FAST_POLL_INTERVAL,
     NORTH_POLE_LATITUDE,
     NORTH_POLE_LONGITUDE,
+    NULLSCHOOL_REFERER,
+    NULLSCHOOL_TRACK_URL,
     SOURCE_AISSTREAM,
     SOURCE_DATALASTIC,
+    SOURCE_NULLSCHOOL,
     STATIONARY_SPEED_THRESHOLD,
     TARA_MMSI,
 )
@@ -216,6 +219,8 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Dispatch to the configured data-source fetcher."""
         if self._data_source == SOURCE_DATALASTIC:
             return await self._fetch_datalastic_data()
+        if self._data_source == SOURCE_NULLSCHOOL:
+            return await self._fetch_nullschool_data()
         # Default / SOURCE_AISSTREAM
         return await self._fetch_ais_data()
 
@@ -264,6 +269,96 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "nav_status": vessel.get("navigational_status"),
             "timestamp": vessel.get("timestamp"),
         }
+
+    async def _fetch_nullschool_data(self) -> dict[str, Any] | None:
+        """Fetch latest vessel position from the Tara/Nullschool track JSON."""
+        headers = {
+            "Referer": NULLSCHOOL_REFERER,
+            "User-Agent": "Mozilla/5.0 (compatible; HomeAssistant/TaraPolarStationTracker)",
+        }
+        session = aiohttp.ClientSession()
+        try:
+            async with asyncio.timeout(30):
+                async with session.get(
+                    NULLSCHOOL_TRACK_URL, headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        _LOGGER.warning(
+                            "Nullschool track endpoint returned HTTP %s", resp.status
+                        )
+                        return None
+                    payload = await resp.json(content_type=None)
+                    return self._parse_nullschool_track(payload)
+        except TimeoutError:
+            _LOGGER.debug("Nullschool track request timed out")
+            return None
+        except aiohttp.ClientError as err:
+            _LOGGER.warning("Nullschool track connection error: %s", err)
+            return None
+        except Exception:
+            _LOGGER.exception("Unexpected error fetching Nullschool track data")
+            return None
+        finally:
+            await session.close()
+
+    @staticmethod
+    def _parse_nullschool_track(payload: Any) -> dict[str, Any] | None:
+        """Extract the most recent position from the Tara/Nullschool track JSON.
+
+        The endpoint returns a columnar array:
+            [
+              ["timestamp", "lon", "lat", "track", "speed"],
+              [[ts, lon, lat, course_deg, speed_knots], ...]
+            ]
+
+        The last row in the data array is the most recent position.
+        Timestamps are Unix epoch seconds (UTC).
+        """
+        try:
+            if (
+                not isinstance(payload, list)
+                or len(payload) < 2
+                or not isinstance(payload[0], list)
+                or not isinstance(payload[1], list)
+            ):
+                _LOGGER.warning(
+                    "Nullschool track JSON: unexpected format — %s",
+                    str(payload)[:200],
+                )
+                return None
+
+            headers: list = payload[0]
+            rows: list = payload[1]
+
+            if not rows:
+                _LOGGER.warning("Nullschool track JSON: no data rows")
+                return None
+
+            # Build a column-name → index map for forward compatibility.
+            col = {name: idx for idx, name in enumerate(headers)}
+            ts_idx = col.get("timestamp", 0)
+            lon_idx = col.get("lon", 1)
+            lat_idx = col.get("lat", 2)
+            track_idx = col.get("track", 3)
+            speed_idx = col.get("speed", 4)
+
+            row = rows[-1]  # most recent entry
+
+            ts_unix = row[ts_idx]
+            timestamp = datetime.fromtimestamp(ts_unix, tz=timezone.utc)
+
+            return {
+                "latitude": float(row[lat_idx]),
+                "longitude": float(row[lon_idx]),
+                "speed": float(row[speed_idx]),
+                "course": float(row[track_idx]),
+                "heading": None,
+                "nav_status": None,
+                "timestamp": timestamp,
+            }
+        except Exception:
+            _LOGGER.exception("Failed to parse Nullschool track JSON")
+            return None
 
     async def _fetch_ais_data(self) -> dict[str, Any] | None:
         """Connect to AISStream WebSocket and fetch latest position report."""

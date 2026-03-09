@@ -20,7 +20,8 @@ DEFAULT_DEPARTURE_DATE: Final = "2026-07-01"  # Planned first Arctic drift
 # --- Data source identifiers ---
 SOURCE_AISSTREAM: Final = "aisstream"
 SOURCE_DATALASTIC: Final = "datalastic"
-DATA_SOURCES: Final = [SOURCE_AISSTREAM, SOURCE_DATALASTIC]
+SOURCE_NULLSCHOOL: Final = "nullschool"
+DATA_SOURCES: Final = [SOURCE_AISSTREAM, SOURCE_DATALASTIC, SOURCE_NULLSCHOOL]
 DEFAULT_DATA_SOURCE: Final = SOURCE_AISSTREAM
 
 TARA_MMSI: Final = "228471700"
@@ -29,6 +30,12 @@ AISSTREAM_WS_URL: Final = "wss://stream.aisstream.io/v0/stream"
 
 # Datalastic REST API (https://datalastic.com)
 DATALASTIC_API_URL: Final = "https://api.datalastic.com/api/v0/vessel"
+
+# Nullschool/Tara track JSON (no API key — requires Referer header)
+NULLSCHOOL_TRACK_URL: Final = (
+    "https://gaia.nullschool.net/data/tara/tps/tara-tps-track.json"
+)
+NULLSCHOOL_REFERER: Final = "https://tara.nullschool.net/"
 
 PANOMAX_CAM_ID: Final = "10693"
 PANOMAX_IMAGE_URL: Final = (
