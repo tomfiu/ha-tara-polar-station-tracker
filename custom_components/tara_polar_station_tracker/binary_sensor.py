@@ -88,7 +88,7 @@ class TaraBinarySensor(
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name="Tara Polar Station",
+            name=entry.title,
             manufacturer="Tara Ocean Foundation",
             model="Polar Station",
             entry_type=DeviceEntryType.SERVICE,

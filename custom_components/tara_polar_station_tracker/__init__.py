@@ -46,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     enable_webcam = entry.options.get(CONF_ENABLE_WEBCAM, DEFAULT_ENABLE_WEBCAM)
 
-    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}_{entry.entry_id}")
     coordinator = TaraPolarStationCoordinator(
         hass,
         api_key,
