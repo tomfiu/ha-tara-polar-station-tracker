@@ -114,10 +114,12 @@ def is_polar_night(
     return False
 
 
-def parse_ais_timestamp(ts: str | None) -> datetime | None:
+def parse_ais_timestamp(ts: str | datetime | None) -> datetime | None:
     """Parse AISStream timestamp into a timezone-aware datetime."""
     if ts is None:
         return None
+    if isinstance(ts, datetime):
+        return ts
     try:
         # AISStream format: "2026-03-08 12:00:00.000000 +0000 UTC"
         ts_clean = ts.replace(" UTC", "").strip()
