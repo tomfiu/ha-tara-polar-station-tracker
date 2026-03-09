@@ -160,7 +160,7 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "solar_elevation": None,
             "local_sunrise": None,
             "local_sunset": None,
-            "stationary": False,
+            "stationary": None,
             "days_since_departure": days,
             "mission_phase": phase,
         }
@@ -258,12 +258,18 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         meta = data.get("MetaData", {})
         report = data.get("Message", {}).get("PositionReport", {})
 
+        sog = report.get("Sog")
+        cog = report.get("Cog")
+        heading = report.get("TrueHeading")
+
         return {
             "latitude": meta.get("latitude") or report.get("Latitude"),
             "longitude": meta.get("longitude") or report.get("Longitude"),
-            "speed": report.get("Sog", 0.0),
-            "course": report.get("Cog", 0.0),
-            "heading": report.get("TrueHeading"),
+            # AIS sentinel values: SOG 102.3 = not available, COG 360.0 = not available
+            "speed": None if (sog is None or sog >= 102.3) else sog,
+            "course": None if (cog is None or cog >= 360.0) else cog,
+            # AIS sentinel value: TrueHeading 511 = not available
+            "heading": None if (heading is None or heading == 511) else heading,
             "nav_status": report.get("NavigationalStatus"),
             "timestamp": meta.get("time_utc"),
         }
@@ -321,8 +327,10 @@ class TaraPolarStationCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data["local_sunrise"] = None
             data["local_sunset"] = None
 
-        # Stationary
-        data["stationary"] = (speed or 0.0) < STATIONARY_SPEED_THRESHOLD
+        # Stationary — only meaningful when we have a valid speed reading
+        data["stationary"] = (
+            speed < STATIONARY_SPEED_THRESHOLD if speed is not None else None
+        )
 
         # Expedition timeline
         try:
