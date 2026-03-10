@@ -127,18 +127,6 @@ SENSOR_DESCRIPTIONS: tuple[TaraSensorEntityDescription, ...] = (
         icon="mdi:sail-boat",
         value_fn=lambda data: data.get("mission_phase"),
     ),
-    TaraSensorEntityDescription(
-        key="track_trace",
-        name="Track Trace",
-        icon="mdi:map-marker-path",
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: len(data.get("track_history") or []),
-        extra_attrs_fn=lambda data: {
-            "track_points": data.get("track_history") or [],
-            "latitude": data.get("latitude"),
-            "longitude": data.get("longitude"),
-        },
-    ),
 )
 
 

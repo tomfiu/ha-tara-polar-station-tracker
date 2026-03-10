@@ -28,7 +28,11 @@ from .coordinator import TaraPolarStationCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS_BASE: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS_BASE: list[Platform] = [
+    Platform.DEVICE_TRACKER,
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
