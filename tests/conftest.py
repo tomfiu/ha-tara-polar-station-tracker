@@ -36,6 +36,8 @@ if "homeassistant" not in sys.modules:
         "homeassistant.components.sensor",
         "homeassistant.components.binary_sensor",
         "homeassistant.components.camera",
+        "homeassistant.components.device_tracker",
+        "homeassistant.components.device_tracker.config_entry",
         "homeassistant.data_entry_flow",
     ]:
         _stub(_n)
@@ -81,6 +83,7 @@ if "homeassistant" not in sys.modules:
         SENSOR = "sensor"
         BINARY_SENSOR = "binary_sensor"
         CAMERA = "camera"
+        DEVICE_TRACKER = "device_tracker"
 
     sys.modules["homeassistant.core"].HomeAssistant = MagicMock
     sys.modules["homeassistant.core"].callback = lambda f: f
@@ -98,6 +101,12 @@ if "homeassistant" not in sys.modules:
     sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntity = MagicMock
     sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntityDescription = MagicMock
     sys.modules["homeassistant.components.camera"].Camera = MagicMock
+
+    class _SourceType:
+        GPS = "gps"
+
+    sys.modules["homeassistant.components.device_tracker"].SourceType = _SourceType
+    sys.modules["homeassistant.components.device_tracker.config_entry"].TrackerEntity = MagicMock
     sys.modules["homeassistant.data_entry_flow"].FlowResult = dict
 
 
