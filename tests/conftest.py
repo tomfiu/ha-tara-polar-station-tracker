@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass, field
 from types import ModuleType
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -85,21 +87,57 @@ if "homeassistant" not in sys.modules:
         CAMERA = "camera"
         DEVICE_TRACKER = "device_tracker"
 
+    class _UnitOfLength:
+        KILOMETERS = "km"
+        MILES = "mi"
+
+    class _UnitOfSpeed:
+        KNOTS = "kn"
+        KILOMETERS_PER_HOUR = "km/h"
+
     sys.modules["homeassistant.core"].HomeAssistant = MagicMock
     sys.modules["homeassistant.core"].callback = lambda f: f
     sys.modules["homeassistant.config_entries"].ConfigEntry = MagicMock
     sys.modules["homeassistant.config_entries"].ConfigFlow = MagicMock
     sys.modules["homeassistant.config_entries"].OptionsFlow = MagicMock
     sys.modules["homeassistant.const"].Platform = _Platform
+    sys.modules["homeassistant.const"].DEGREE = "°"
+    sys.modules["homeassistant.const"].UnitOfLength = _UnitOfLength
+    sys.modules["homeassistant.const"].UnitOfSpeed = _UnitOfSpeed
     sys.modules["homeassistant.helpers.storage"].Store = MagicMock
     sys.modules["homeassistant.helpers.entity_platform"].AddEntitiesCallback = MagicMock
     sys.modules["homeassistant.helpers.aiohttp_client"].async_get_clientsession = MagicMock
+    # Stub SensorEntityDescription as a real dataclass so sub-dataclasses work.
+    @dataclass(frozen=True, kw_only=True)
+    class _SensorEntityDescription:
+        key: str = ""
+        name: str = ""
+        native_unit_of_measurement: str | None = None
+        device_class: Any = None
+        state_class: Any = None
+        icon: str | None = None
+        suggested_display_precision: int | None = None
+
+    @dataclass(frozen=True, kw_only=True)
+    class _BinarySensorEntityDescription:
+        key: str = ""
+        name: str = ""
+        icon: str | None = None
+        device_class: Any = None
+
+    class _SensorStateClass:
+        MEASUREMENT = "measurement"
+        TOTAL_INCREASING = "total_increasing"
+
+    class _SensorDeviceClass:
+        TIMESTAMP = "timestamp"
+
     sys.modules["homeassistant.components.sensor"].SensorEntity = MagicMock
-    sys.modules["homeassistant.components.sensor"].SensorEntityDescription = MagicMock
-    sys.modules["homeassistant.components.sensor"].SensorStateClass = MagicMock
-    sys.modules["homeassistant.components.sensor"].SensorDeviceClass = MagicMock
+    sys.modules["homeassistant.components.sensor"].SensorEntityDescription = _SensorEntityDescription
+    sys.modules["homeassistant.components.sensor"].SensorStateClass = _SensorStateClass
+    sys.modules["homeassistant.components.sensor"].SensorDeviceClass = _SensorDeviceClass
     sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntity = MagicMock
-    sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntityDescription = MagicMock
+    sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntityDescription = _BinarySensorEntityDescription
     sys.modules["homeassistant.components.camera"].Camera = MagicMock
 
     class _SourceType:

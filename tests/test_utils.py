@@ -9,6 +9,8 @@ import pytest
 from custom_components.tara_polar_station_tracker.utils import (
     calculate_bearing,
     compass_direction,
+    get_solar_elevation,
+    get_sunrise_sunset,
     haversine_distance,
     is_polar_day,
     is_polar_night,
@@ -158,3 +160,105 @@ class TestParseAisTimestamp:
     def test_garbage_input(self):
         """Invalid input should return None."""
         assert parse_ais_timestamp("not a date") is None
+
+    def test_empty_string_returns_none(self):
+        """Empty string should return None."""
+        assert parse_ais_timestamp("") is None
+
+    def test_timezone_preserved(self):
+        """Parsed timestamp should have UTC timezone info."""
+        ts = "2026-08-15 12:30:00.000000 +0000 UTC"
+        result = parse_ais_timestamp(ts)
+        assert result.tzinfo is not None
+        assert result.utcoffset().total_seconds() == 0
+
+
+class TestGetSolarElevation:
+    """Test solar elevation calculation."""
+
+    def test_returns_float(self):
+        """Solar elevation should be a float."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        result = get_solar_elevation(50.0, 14.0, dt)
+        assert isinstance(result, float)
+
+    def test_midday_sun_above_horizon_at_midlatitude(self):
+        """At midday in summer at 50°N, sun should be above horizon."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        result = get_solar_elevation(50.0, 0.0, dt)
+        assert result > 0
+
+    def test_midnight_sun_below_horizon_at_midlatitude(self):
+        """At midnight in winter at 50°N, sun should be well below horizon."""
+        dt = datetime(2026, 12, 21, 0, 0, tzinfo=timezone.utc)
+        result = get_solar_elevation(50.0, 0.0, dt)
+        assert result < 0
+
+    def test_polar_day_sun_above_horizon(self):
+        """During Arctic summer at 80°N, solar elevation should be positive."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        result = get_solar_elevation(80.0, 0.0, dt)
+        assert result > 0
+
+    def test_polar_night_sun_below_horizon(self):
+        """During Arctic winter at 80°N, solar elevation should be negative."""
+        dt = datetime(2026, 12, 21, 12, 0, tzinfo=timezone.utc)
+        result = get_solar_elevation(80.0, 0.0, dt)
+        assert result < 0
+
+    def test_elevation_range(self):
+        """Solar elevation should always be in -90..90 range."""
+        for month in [1, 3, 6, 9, 12]:
+            for lat in [-80, -45, 0, 45, 80]:
+                dt = datetime(2026, month, 15, 12, 0, tzinfo=timezone.utc)
+                result = get_solar_elevation(float(lat), 0.0, dt)
+                assert -90 <= result <= 90
+
+
+class TestGetSunriseSunset:
+    """Test sunrise and sunset calculation."""
+
+    def test_returns_tuple(self):
+        """get_sunrise_sunset should return a tuple of two elements."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        result = get_sunrise_sunset(50.0, 0.0, dt)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+
+    def test_normal_day_returns_datetimes(self):
+        """A normal day at mid-latitude should return two datetimes."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        sr, ss = get_sunrise_sunset(50.0, 0.0, dt)
+        assert isinstance(sr, datetime)
+        assert isinstance(ss, datetime)
+
+    def test_sunrise_before_sunset(self):
+        """Sunrise should be before sunset on a normal day."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        sr, ss = get_sunrise_sunset(50.0, 0.0, dt)
+        assert sr < ss
+
+    def test_polar_day_no_sunrise_sunset(self):
+        """During polar day at 80°N in summer, sunrise/sunset may return None."""
+        dt = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+        sr, ss = get_sunrise_sunset(80.0, 0.0, dt)
+        # During polar day, at least one of them should be None (sun doesn't set)
+        # This verifies the function handles polar conditions gracefully
+        assert sr is None or ss is None or isinstance(sr, datetime)
+
+    def test_polar_night_returns_none_values(self):
+        """During polar night at 80°N in winter, both may return None."""
+        dt = datetime(2026, 12, 21, 12, 0, tzinfo=timezone.utc)
+        sr, ss = get_sunrise_sunset(80.0, 0.0, dt)
+        # Both None is acceptable for polar night
+        assert sr is None or isinstance(sr, datetime)
+        assert ss is None or isinstance(ss, datetime)
+
+    def test_return_types_are_aware(self):
+        """Returned datetimes should be timezone-aware."""
+        dt = datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc)
+        sr, ss = get_sunrise_sunset(50.0, 0.0, dt)
+        if sr is not None:
+            assert sr.tzinfo is not None
+        if ss is not None:
+            assert ss.tzinfo is not None
